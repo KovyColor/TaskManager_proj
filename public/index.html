@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Company Task Manager</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+<aside class="sidebar" id="sidebar" hidden>
+  <h2>Task Manager</h2>
+  <button class="active" data-view="dashboard">Dashboard</button>
+  <button data-view="tasks">Tasks</button>
+  <button data-view="employees">Employees</button>
+  <button data-view="reports">Reports</button>
+  <button data-view="settings">Settings</button>
+  <button id="logout-btn" onclick="logout()" class="logout-btn">Logout</button>
+</aside>
+
+<div class="main">
+  <div class="header">
+    <button class="menu-btn">☰</button>
+    <h3>Company Task Manager</h3>
+  </div>
+
+  <div class="content">
+
+    <div id="view-dashboard" class="view active">
+      <div class="grid">
+        <div class="col col-left">
+          <section class="stats-section">
+            <h3 class="section-title">Overview</h3>
+            <div class="stats">
+              <div class="stat"><h3>Total Tasks</h3><p id="total">0</p></div>
+              <div class="stat"><h3>High Priority</h3><p id="high">0</p></div>
+              <div class="stat"><h3>In Progress</h3><p id="progress">0</p></div>
+            </div>
+          </section>
+
+          <div class="panel">
+            <h3>Recently Viewed</h3>
+            <div id="recently-viewed-tasks" class="tasks"></div>
+          </div>
+        </div>
+
+        <div class="col col-center">
+          <div class="panel create-panel">
+            <h3>Create Task</h3>
+            <input id="title" placeholder="Title">
+            <textarea id="description" placeholder="Description"></textarea>
+            <input id="assignedTo" placeholder="Assigned to">
+            <input id="createdBy" placeholder="Created by">
+            <select id="priority">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+
+            <select id="status" aria-label="Status">
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+
+            <select id="category" aria-label="Category">
+              <!-- populated by JS: server categories or defaults -->
+            </select>
+
+            <button class="main" onclick="createTask()">Add Task</button>
+          </div>
+
+          <div class="panel recent-panel">
+            <h3>Recent Tasks</h3>
+            <div id="recent-tasks" class="tasks"></div>
+          </div>
+        </div>
+
+        <div class="col col-right">
+          <div class="tasks-section">
+            <h3 class="section-title">All Tasks</h3>
+            <div id="employee-filter-message" style="background: #0f172a; border: 1px solid #1e293b; border-radius: 4px; padding: 10px; margin-bottom: 10px; color: #3b82f6; display: none;"></div>
+            <div class="task-filters">
+              <input id="search-input" type="text" placeholder="Search tasks..." style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #1e293b; background: #111827; color: #e5e7eb; border-radius: 4px;">
+              <select id="status-filter" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #1e293b; background: #111827; color: #e5e7eb; border-radius: 4px;">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div class="divider"></div>
+            <div class="tasks" id="tasks"></div>
+            <div class="pagination-controls" style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+              <button id="prev-page-btn" onclick="loadTasks(appState.currentPage - 1)" style="padding: 8px 15px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">← Previous</button>
+              <span id="page-info" style="padding: 8px 15px; color: #9ca3af;">Page 1 of 1</span>
+              <button id="next-page-btn" onclick="loadTasks(appState.currentPage + 1)" style="padding: 8px 15px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">Next →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-tasks" class="view" hidden>
+      <div class="grid" style="display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start;">
+        <div class="col col-left">
+          <section class="tasks-section">
+            <h3 class="section-title">All Tasks</h3>
+            <div id="employee-filter-message-tasks" style="background: #0f172a; border: 1px solid #1e293b; border-radius: 4px; padding: 10px; margin-bottom: 10px; color: #3b82f6; display: none;"></div>
+            <div class="task-filters">
+              <input id="search-input-tasks" type="text" placeholder="Search tasks..." style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #1e293b; background: #111827; color: #e5e7eb; border-radius: 4px;">
+              <select id="status-filter-tasks" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #1e293b; background: #111827; color: #e5e7eb; border-radius: 4px;">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div class="divider"></div>
+            <div class="tasks" id="tasks-list"></div>
+            <div class="pagination-controls" style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+              <button id="prev-page-btn-tasks" onclick="loadTasks(appState.currentPage - 1)" style="padding: 8px 15px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">← Previous</button>
+              <span id="page-info-tasks" style="padding: 8px 15px; color: #9ca3af;">Page 1 of 1</span>
+              <button id="next-page-btn-tasks" onclick="loadTasks(appState.currentPage + 1)" style="padding: 8px 15px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">Next →</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="col col-right">
+          <div class="panel" style="background: var(--panel); padding: 16px; border-radius: 12px; border: 1px solid var(--border); position: sticky; top: 80px;">
+            <h4 style="margin: 0 0 12px; font-size: 14px; color: #e5e7eb; font-weight: 600;">Recently Added</h4>
+            <div id="recently-added-tasks-view" style="display: flex; flex-direction: column; gap: 10px; max-height: 600px; overflow-y: auto;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-employees" class="view" hidden>
+      <div class="grid" style="display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start;">
+        <div class="col col-left">
+          <div class="panel">
+            <h3 style="margin: 0 0 16px; color: #e5e7eb; font-size: 18px;">Employees</h3>
+            <div id="employees-container" style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #111827; border-bottom: 2px solid #1e293b;">
+                    <th style="padding: 12px; text-align: left; color: #e5e7eb; font-weight: 600;">Email</th>
+                    <th style="padding: 12px; text-align: left; color: #e5e7eb; font-weight: 600;">Role</th>
+                    <th style="padding: 12px; text-align: center; color: #e5e7eb; font-weight: 600;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="employees-table-body">
+                </tbody>
+              </table>
+              <div id="employees-empty" style="text-align: center; padding: 20px; color: #9ca3af;">
+                <p>No employees found</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col col-right">
+          <div class="panel" style="background: var(--panel); padding: 16px; border-radius: 12px; border: 1px solid var(--border); position: sticky; top: 80px;">
+            <h4 style="margin: 0 0 12px; font-size: 14px; color: #e5e7eb; font-weight: 600;">Recently Added</h4>
+            <div id="recently-added-tasks-employees" style="display: flex; flex-direction: column; gap: 10px; max-height: 600px; overflow-y: auto;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-reports" class="view" hidden>
+      <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="col">
+          <div class="panel">
+            <h3 style="margin: 0 0 16px; color: #e5e7eb;">Create Report</h3>
+            <input id="report-title" type="text" placeholder="Title" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #1e293b; background: #111827; color: #e5e7eb; border-radius: 4px;">
+            <textarea id="report-description" placeholder="Description" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #1e293b; background: #111827; color: #e5e7eb; border-radius: 4px; resize: vertical; min-height: 100px;"></textarea>
+            <select id="report-category" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #1e293b; background: #111827; color: #e5e7eb; border-radius: 4px;">
+              <option value="">Select Category</option>
+              <option value="work">Work</option>
+              <option value="complaint">Complaint</option>
+            </select>
+            <button class="btn btn-primary" onclick="createReport()" style="width: 100%;">Create Report</button>
+          </div>
+          <div class="panel" style="margin-top: 12px;">
+            <h4 style="margin: 0 0 12px; color: #e5e7eb;">Filter Reports</h4>
+            <select id="report-filter" style="width: 100%; padding: 8px; border: 1px solid #1e293b; background: #111827; color: #e5e7eb; border-radius: 4px;">
+              <option value="">All Categories</option>
+              <option value="work">Work</option>
+              <option value="complaint">Complaint</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="panel">
+            <h3 style="margin: 0 0 16px; color: #e5e7eb;">Reports</h3>
+            <div id="reports-container" style="display: flex; flex-direction: column; gap: 10px; max-height: 600px; overflow-y: auto;">
+              <div id="reports-empty" style="text-align: center; padding: 20px; color: #9ca3af;">
+                <p>No reports found</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-settings" class="view" hidden>
+      <div class="panel">
+        <h2>Settings</h2>
+        <p class="muted">Application settings and preferences (placeholder).</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Task Detail Modal -->
+<div id="taskModal" class="modal" hidden>
+  <div class="modal-overlay"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalTitle">Task Details</h2>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label>Description</label>
+        <p id="modalDescription"></p>
+      </div>
+      <div class="modal-field">
+        <label>Assigned To</label>
+        <p id="modalAssignedTo"></p>
+      </div>
+      <div class="modal-field">
+        <label>Created</label>
+        <p id="modalCreatedAt"></p>
+      </div>
+      <div class="modal-field">
+        <label>Status</label>
+        <select id="modalStatus" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #334155;">
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+      <div class="modal-field" id="reportsSection" style="display: none;">
+        <label>Related Reports</label>
+        <div id="modalReports"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="modalSaveBtn" class="btn btn-primary">Save Changes</button>
+      <button id="modalCancelBtn" class="btn btn-secondary">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="auth.js" defer></script>
+<script src="app.js" defer></script>
+
+</body>
+</html>
