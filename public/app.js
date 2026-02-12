@@ -413,6 +413,13 @@ function applyFilters() {
   loadTasks(1);
 }
 
+// Clear employee filter
+function clearEmployeeFilter() {
+  appState.filters.employee = '';
+  appState.currentPage = 1;
+  loadTasks(1);
+}
+
 // Update pagination UI
 function updatePaginationUI() {
   const prevBtn = document.getElementById('prev-page-btn');
@@ -481,18 +488,31 @@ async function openTaskModal(taskId) {
   }
 }
 
-function closeTaskModal() {
-  const modalEl = document.getElementById('taskModal');
-  modalEl.hidden = true;
+function closeModal() {
+  const modal = document.getElementById('taskModal');
+  if (modal) {
+    modal.hidden = true;
+  }
   window.currentTaskId = null;
   console.log('🟢 Modal closed');
 }
 
-async function updateTaskStatus(newStatus) {
+// Alias for compatibility
+const closeTaskModal = closeModal;
+
+async function updateTaskStatus(taskId) {
   try {
-    const taskId = window.currentTaskId;
     if (!taskId) {
-      console.error('❌ No task ID stored');
+      console.error('❌ No task ID provided');
+      return;
+    }
+
+    // Read the new status from modal select
+    const modalStatus = document.getElementById('modalStatus');
+    const newStatus = modalStatus ? modalStatus.value : null;
+    
+    if (!newStatus) {
+      console.error('❌ No status selected');
       return;
     }
 
@@ -520,15 +540,76 @@ async function updateTaskStatus(newStatus) {
     console.log('✅ Task updated:', updatedTask);
 
     // Refresh task lists
-    renderTasksView();
-    renderRecentlyAddedTasks();
+    loadTasks();
+    loadRecentlyViewedTasks();
 
     // Show success message
     alert('Task status updated successfully!');
+    
+    // Close modal after successful save
+    closeModal();
   } catch (err) {
     console.error('❌ Error updating task:', err);
     alert('Failed to update task status');
   }
+}
+
+// ===== MODAL SETUP FUNCTION =====
+function setupModalEventListeners() {
+  const modalEl = document.getElementById('taskModal');
+  const modalCloseBtn = document.querySelector('.modal-close');
+  const modalOverlay = document.querySelector('.modal-overlay');
+  const modalSaveBtn = document.getElementById('modalSaveBtn');
+  const modalCancelBtn = document.getElementById('modalCancelBtn');
+  
+  console.log('🔧 Setting up modal event listeners');
+  
+  // Close modal on close button click
+  if (modalCloseBtn) {
+    modalCloseBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      closeModal();
+    });
+  }
+  
+  // Close modal on overlay click
+  if (modalOverlay) {
+    modalOverlay.addEventListener('click', function(e) {
+      e.preventDefault();
+      closeModal();
+    });
+  }
+  
+  // Close modal on cancel button click
+  if (modalCancelBtn) {
+    modalCancelBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      closeModal();
+    });
+  }
+  
+  // Save status changes
+  if (modalSaveBtn) {
+    modalSaveBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const taskId = window.currentTaskId;
+      if (taskId) {
+        await updateTaskStatus(taskId);
+      }
+    });
+  }
+  
+  // Close modal on ESC key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('taskModal');
+      if (modal && !modal.hidden) {
+        closeModal();
+      }
+    }
+  });
+  
+  console.log('✅ Modal event listeners setup complete');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -622,6 +703,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // ===== SETUP MODAL EVENT LISTENERS (ONCE) =====
+  setupModalEventListeners();
+
   // Setup sidebar event listeners
   const headerTitle = document.querySelector('.header h3');
   
@@ -634,6 +718,14 @@ document.addEventListener('DOMContentLoaded', function() {
       const view = this.getAttribute('data-view');
       console.log('👆 Clicked button:', view);
       const viewId = 'view-' + view;
+      
+      // Clear employee filter when navigating to Dashboard
+      if (view === 'dashboard') {
+        appState.filters.employee = '';
+        appState.filters.search = '';
+        appState.filters.status = '';
+        appState.currentPage = 1;
+      }
       
       // Show the view
       showView(viewId, this.textContent.trim());
@@ -753,47 +845,6 @@ function showView(viewId, title) {
     // Employees view: render recently added component
     renderRecentlyAddedTasks('recently-added-tasks-employees');
   }
-  
-  // ===== MODAL EVENT HANDLERS =====
-  
-  const modalEl = document.getElementById('taskModal');
-  const modalCloseBtn = document.querySelector('.modal-close');
-  const modalOverlay = document.querySelector('.modal-overlay');
-  const modalSaveBtn = document.getElementById('modalSaveBtn');
-  const modalCancelBtn = document.getElementById('modalCancelBtn');
-  const modalStatus = document.getElementById('modalStatus');
-  
-  // Close modal on close button click
-  if (modalCloseBtn) {
-    modalCloseBtn.addEventListener('click', closeTaskModal);
-  }
-  
-  // Close modal on overlay click
-  if (modalOverlay) {
-    modalOverlay.addEventListener('click', closeTaskModal);
-  }
-  
-  // Close modal on cancel button click
-  if (modalCancelBtn) {
-    modalCancelBtn.addEventListener('click', closeTaskModal);
-  }
-  
-  // Save status changes
-  if (modalSaveBtn) {
-    modalSaveBtn.addEventListener('click', async function() {
-      const newStatus = modalStatus.value;
-      console.log('💾 Saving status:', newStatus);
-      await updateTaskStatus(newStatus);
-      closeTaskModal();
-    });
-  }
-  
-  // Close modal on ESC key
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && !modalEl.hidden) {
-      closeTaskModal();
-    }
-  });
 }
 
 function createEmptyState(title, subtitle) {
@@ -868,7 +919,12 @@ function renderAll() {
   const employeeFilterMsg = document.getElementById('employee-filter-message');
   if (employeeFilterMsg) {
     if (appState.filters.employee) {
-      employeeFilterMsg.textContent = '📋 Viewing tasks for: ' + appState.filters.employee;
+      const clearBtn = document.createElement('div');
+      clearBtn.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
+      clearBtn.innerHTML = `<div>📋 Viewing tasks for: <strong>${appState.filters.employee}</strong></div>
+                            <button type="button" onclick="clearEmployeeFilter()" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✕ Clear Filter</button>`;
+      employeeFilterMsg.innerHTML = '';
+      employeeFilterMsg.appendChild(clearBtn);
       employeeFilterMsg.style.display = 'block';
     } else {
       employeeFilterMsg.style.display = 'none';
@@ -879,7 +935,12 @@ function renderAll() {
   const employeeFilterMsgTasks = document.getElementById('employee-filter-message-tasks');
   if (employeeFilterMsgTasks) {
     if (appState.filters.employee) {
-      employeeFilterMsgTasks.textContent = '📋 Viewing tasks for: ' + appState.filters.employee;
+      const clearBtn = document.createElement('div');
+      clearBtn.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
+      clearBtn.innerHTML = `<div>📋 Viewing tasks for: <strong>${appState.filters.employee}</strong></div>
+                            <button type="button" onclick="clearEmployeeFilter()" style="padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✕ Clear Filter</button>`;
+      employeeFilterMsgTasks.innerHTML = '';
+      employeeFilterMsgTasks.appendChild(clearBtn);
       employeeFilterMsgTasks.style.display = 'block';
     } else {
       employeeFilterMsgTasks.style.display = 'none';
@@ -990,7 +1051,6 @@ async function createTask(){
   const titleEl = document.getElementById('title');
   const descriptionEl = document.getElementById('description');
   const assignedEl = document.getElementById('assignedTo');
-  const createdEl = document.getElementById('createdBy');
   const priorityEl = document.getElementById('priority');
   const statusEl = document.getElementById('status');
 
@@ -1007,7 +1067,6 @@ async function createTask(){
     title: titleEl.value,
     description: descriptionEl.value,
     assignedTo: assignedEl.value,
-    createdBy: createdEl.value,
     priority: priorityEl.value,
     status: statusEl ? statusEl.value : 'pending'
   };
@@ -1049,7 +1108,7 @@ async function createTask(){
       saveTasksToStorage();
       loadTasks();  // Reload tasks to update pagination
       // Reset inputs after successful create
-      titleEl.value = descriptionEl.value = assignedEl.value = createdEl.value = "";
+      titleEl.value = descriptionEl.value = assignedEl.value = "";
       if (statusEl) statusEl.value = "pending";
     } else {
       alert('Failed to create task: ' + res.status + ' ' + text);
