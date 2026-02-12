@@ -3,7 +3,17 @@ const User = require('../models/User');
 
 const createTask = async (req, res) => {
   try {
-    const task = await Task.create(req.body);
+    // Automatically set createdBy to the authenticated user
+    const taskData = {
+      ...req.body,
+      createdBy: req.user._id
+    };
+    
+    const task = await Task.create(taskData);
+    
+    // Populate createdBy before sending response
+    await task.populate('createdBy', 'email');
+    
     res.status(201).json(task);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -18,6 +28,30 @@ const getTasks = async (req, res) => {
     // Build filter object
     let filter = {};
     
+    // ENFORCE VISIBILITY RULES
+    if (req.user) {
+      // User is authenticated
+      if (req.user.role !== 'admin') {
+        // Regular user: only see tasks assigned to them or created by them
+        filter.$or = [
+          { assignedTo: req.user.email },
+          { createdBy: req.user._id }
+        ];
+      }
+      // Admin users see all tasks (no additional filter)
+    } else {
+      // No authentication: return no tasks (security)
+      return res.json({
+        tasks: [],
+        pagination: {
+          page: 1,
+          limit: limitNum,
+          total: 0,
+          pages: 0
+        }
+      });
+    }
+    
     // Filter by status if provided
     if (status) {
       filter.status = status;
@@ -25,10 +59,24 @@ const getTasks = async (req, res) => {
     
     // Search by title OR assignedTo (case-insensitive)
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { assignedTo: { $regex: search, $options: 'i' } }
-      ];
+      if (filter.$or) {
+        // Combine with existing OR conditions
+        filter.$and = [
+          { $or: filter.$or },
+          {
+            $or: [
+              { title: { $regex: search, $options: 'i' } },
+              { assignedTo: { $regex: search, $options: 'i' } }
+            ]
+          }
+        ];
+        delete filter.$or;
+      } else {
+        filter.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { assignedTo: { $regex: search, $options: 'i' } }
+        ];
+      }
     }
     
     // Calculate pagination
@@ -39,6 +87,7 @@ const getTasks = async (req, res) => {
     // Execute query with filters and pagination
     const tasks = await Task.find(filter)
       .populate('category')
+      .populate('createdBy', 'email') // Include creator email for display
       .skip(skip)
       .limit(limitNum);
     
@@ -61,7 +110,9 @@ const getTasks = async (req, res) => {
 
 const getTaskById = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id).populate('category');
+    const task = await Task.findById(req.params.id)
+      .populate('category')
+      .populate('createdBy', 'email');
     if (!task) return res.status(404).json({ error: 'Task not found' });
     
     // Track recently viewed task if user is authenticated
@@ -115,7 +166,18 @@ const getRecentlyViewedTasks = async (req, res) => {
 
 const updateTask = async (req, res) => {
   try {
-    const task = await Task.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true }).populate('category');
+    // Prevent updating createdBy field (security)
+    if (req.body.createdBy) {
+      delete req.body.createdBy;
+    }
+    
+    const task = await Task.findByIdAndUpdate(req.params.id, req.body, { 
+      new: true, 
+      runValidators: true 
+    })
+      .populate('category')
+      .populate('createdBy', 'email');
+    
     if (!task) return res.status(404).json({ error: 'Task not found' });
     res.json(task);
   } catch (err) {
