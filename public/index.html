@@ -52,7 +52,6 @@
             <input id="title" placeholder="Title">
             <textarea id="description" placeholder="Description"></textarea>
             <input id="assignedTo" placeholder="Assigned to">
-            <input id="createdBy" placeholder="Created by">
             <select id="priority">
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -223,7 +222,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h2 id="modalTitle">Task Details</h2>
-      <button class="modal-close">&times;</button>
+      <button type="button" class="modal-close">&times;</button>
     </div>
     <div class="modal-body">
       <div class="modal-field">
@@ -252,8 +251,8 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button id="modalSaveBtn" class="btn btn-primary">Save Changes</button>
-      <button id="modalCancelBtn" class="btn btn-secondary">Close</button>
+      <button type="button" id="modalSaveBtn" class="btn btn-primary">Save Changes</button>
+      <button type="button" id="modalCancelBtn" class="btn btn-secondary">Close</button>
     </div>
   </div>
 </div>
