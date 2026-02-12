@@ -561,6 +561,7 @@ function setupModalEventListeners() {
   const modalOverlay = document.querySelector('.modal-overlay');
   const modalSaveBtn = document.getElementById('modalSaveBtn');
   const modalCancelBtn = document.getElementById('modalCancelBtn');
+  const modalDeleteBtn = document.getElementById('modalDeleteBtn');
   
   console.log('🔧 Setting up modal event listeners');
   
@@ -595,6 +596,19 @@ function setupModalEventListeners() {
       const taskId = window.currentTaskId;
       if (taskId) {
         await updateTaskStatus(taskId);
+      }
+    });
+  }
+  
+  // Delete task
+  if (modalDeleteBtn) {
+    modalDeleteBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      const taskId = window.currentTaskId;
+      if (taskId) {
+        if (confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+          await deleteTask(taskId);
+        }
       }
     });
   }
@@ -1136,7 +1150,7 @@ async function deleteTask(id){
   try {
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('You must be logged in as an admin to delete tasks. Please log in.');
+      alert('You must be logged in to delete tasks. Please log in.');
       return;
     }
 
@@ -1145,8 +1159,14 @@ async function deleteTask(id){
 
     const text = await res.text();
 
-    if (res.status === 401 || res.status === 403) {
-      alert('Permission denied: admin access required to delete tasks.');
+    if (res.status === 401) {
+      alert('Authentication required. Please log in again.');
+      console.error('Delete failed with authorization error', res.status, text);
+      return;
+    }
+
+    if (res.status === 403) {
+      alert('Permission denied: You can only delete tasks you created.');
       console.error('Delete failed with authorization error', res.status, text);
       return;
     }
@@ -1158,6 +1178,12 @@ async function deleteTask(id){
         saveTasksToStorage();
         renderAll();
       }
+      
+      // Close modal and reload task list
+      closeModal();
+      loadTasks();
+      
+      alert('Task deleted successfully');
     } else {
       alert('Failed to delete task: ' + res.status + ' ' + text);
       console.error('Server failed to delete task:', res.status, text);
