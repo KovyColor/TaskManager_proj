@@ -7,8 +7,7 @@ The application includes authentication, role-based access control (RBAC), task 
 
 ## 🌍 Live Demo
 
-🔗 **Live Application:** https://your-app-name.onrender.com  
-🔗 **API Base URL:** https://your-app-name.onrender.com/api  
+🔗 **Live Application:** https://taskmanager-proj.onrender.com
 
 ---
 
