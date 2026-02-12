@@ -22,8 +22,8 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
-// GET /api/tasks - public (with filtering and pagination)
-router.get('/', taskController.getTasks);
+// GET /api/tasks - with optional authentication for visibility filtering
+router.get('/', optionalAuth, taskController.getTasks);
 // GET /api/tasks/recently-viewed - authenticated users only
 router.get('/recently-viewed/list', authMiddleware, taskController.getRecentlyViewedTasks);
 // GET /api/tasks/:id - public, but optionally authenticated for tracking
