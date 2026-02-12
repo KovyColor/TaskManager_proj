@@ -256,11 +256,3 @@ Key concepts implemented:
 | Documentation | ✅ |
 
 ---
-
-## 👨‍💻 Author
-
-Final Project – Web Technologies  
-Full-Stack Task Management System
-
----
-
